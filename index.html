@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rotation Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{background:#0d1117;color:#c9d1d9;font-family:'Inter',system-ui,sans-serif;display:flex}
+#vp{flex:1;position:relative;overflow:hidden;min-width:0}
+canvas{display:block;cursor:grab}canvas:active{cursor:grabbing}
+.axlbl{position:absolute;font-weight:700;pointer-events:none;text-shadow:0 1px 6px #000d;transform:translate(-50%,-50%)}
+#hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:#0d111788;border:1px solid #30363d44;border-radius:20px;padding:4px 14px;font-size:10px;color:#6e7681;pointer-events:none;backdrop-filter:blur(4px)}
+#hud{position:absolute;top:12px;left:12px;background:#161b22cc;border:1px solid #30363d;border-radius:8px;padding:7px 12px;font-size:10.5px;color:#8b949e;pointer-events:none;backdrop-filter:blur(4px);line-height:1.75;min-width:160px}
+#hud b{color:#58a6ff;font-size:11.5px}
+#hud .hq{font-family:'JetBrains Mono',monospace;font-size:9px;color:#79c0ff}
+#mpick{position:absolute;bottom:40px;left:12px;background:#0d111799;border:1px solid #30363d55;border-radius:8px;padding:5px 10px;backdrop-filter:blur(4px)}
+#mpick select{background:transparent;border:none;color:#8b949e;font-size:10.5px;cursor:pointer;font-family:'Inter',sans-serif;outline:none}
+#panel{width:308px;min-width:308px;background:#161b22;border-left:1px solid #21262d;display:flex;flex-direction:column;overflow:hidden}
+.panelhead{padding:13px 13px 0;flex-shrink:0}
+.ph1{font-size:15px;font-weight:700;color:#58a6ff}
+.ph2{font-size:10px;color:#6e7681;margin-top:2px}
+.tabbar{display:flex;padding:10px 13px 0;gap:3px;flex-shrink:0}
+.tab{flex:1;padding:6px 2px;background:#0d1117;border:1px solid #21262d;border-radius:6px 6px 0 0;border-bottom:none;color:#6e7681;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;white-space:nowrap;text-align:center}
+.tab.on{background:#161b22;border-color:#30363d;color:#f0f6fc;border-bottom:2px solid #58a6ff;margin-bottom:-1px;z-index:1}
+.tab:not(.on):hover{color:#c9d1d9}
+.tc{flex:1;border-top:1px solid #30363d;padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#30363d transparent}
+.tc::-webkit-scrollbar{width:3px}.tc::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
+hr{border:none;border-top:1px solid #21262d}
+.slbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#58a6ff55;margin-bottom:3px}
+.tog{display:flex;background:#0d1117;border-radius:8px;border:1px solid #30363d;padding:3px;gap:3px}
+.tb2{flex:1;padding:6px 4px;background:transparent;border:none;border-radius:6px;color:#6e7681;font-size:11px;font-weight:500;cursor:pointer;transition:background .15s,color .15s;white-space:nowrap;font-family:'Inter',sans-serif}
+.tb2.on{background:#21262d;color:#f0f6fc;box-shadow:0 1px 4px #0006}
+.tb2:not(.on):hover{color:#c9d1d9;background:#1c2129}
+.sw{position:relative}.sw::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#8b949e;pointer-events:none;font-size:11px}
+select{width:100%;background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:8px;padding:7px 26px 7px 10px;font-size:11px;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;font-family:'Inter',sans-serif}
+select:focus{border-color:#58a6ff}select option{background:#161b22}
+.ac{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:9px 10px 7px;transition:border-color .2s}
+.ac:hover{border-color:#30363d}
+.ah{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.an{display:flex;align-items:center;gap:6px;font-size:11px;color:#c9d1d9}
+.adot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.av{font-size:11px;font-family:'JetBrains Mono',monospace;color:#58a6ff;min-width:44px;text-align:right}
+input[type=range]{width:100%;height:3px;border-radius:2px;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background:#30363d}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;cursor:pointer;border:2px solid #0d1117;transition:transform .1s}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.3)}
+.rx::-webkit-slider-thumb{background:#ff5555}.rx{accent-color:#ff5555}
+.ry::-webkit-slider-thumb{background:#33dd55}.ry{accent-color:#33dd55}
+.rz::-webkit-slider-thumb{background:#4499ff}.rz{accent-color:#4499ff}
+.rw::-webkit-slider-thumb{background:#cc88ff}.rw{accent-color:#cc88ff}
+.gw{display:none;background:#2a1f00;border:1px solid #a07700;border-radius:7px;padding:8px 10px;font-size:10.5px;color:#d4a000;line-height:1.5}
+.gw.show{display:block}
+.mw{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:8px}
+.mg{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.mc{font-family:'JetBrains Mono',monospace;font-size:9.5px;text-align:center;padding:5px 2px;border-radius:4px;background:#161b22;transition:color .3s}
+.info{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:10px;font-size:10.5px;line-height:1.7;color:#8b949e}
+.info strong{color:#c9d1d9}
+.info .fml{font-family:'JetBrains Mono',monospace;background:#21262d;display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;color:#79c0ff;margin-top:5px}
+.tab-intro{background:#0d1117;border:1px solid #21262d;border-left:3px solid #58a6ff;border-radius:6px;padding:9px 11px;font-size:10.5px;color:#8b949e;line-height:1.65}
+.tab-intro strong{color:#c9d1d9}
+.cr{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.cr input{accent-color:#58a6ff;cursor:pointer}
+.cr span{font-size:11px;color:#8b949e}
+.leg{display:flex;flex-direction:column;gap:4px}
+.lr{display:flex;gap:10px;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:5px;font-size:10.5px;color:#8b949e}
+.ll{width:16px;height:2px;border-radius:1px}
+.pg{display:grid;grid-template-columns:repeat(2,1fr);gap:5px}
+.pb{padding:5px 6px;background:#21262d;border:1px solid #30363d;border-radius:6px;color:#8b949e;font-size:10.5px;cursor:pointer;text-align:center;transition:all .15s;font-family:'Inter',sans-serif;line-height:1.3}
+.pb:hover{background:#30363d;color:#c9d1d9;border-color:#58a6ff44}
+/* Matrix */
+.mat-wrap{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:10px}
+.col-hdr{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:5px}
+.ch{font-size:9.5px;font-weight:600;text-align:center;font-family:'JetBrains Mono',monospace;opacity:.7}
+.mat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.mci{width:100%;background:#161b22;border:1px solid #21262d;border-radius:6px;color:#79c0ff;font-family:'JetBrains Mono',monospace;font-size:11px;text-align:center;padding:7px 3px;outline:none;transition:border-color .15s}
+.mci:focus{border-color:#58a6ff;background:#1c2432}
+.mci.bad{color:#ff7b72;border-color:#6b2a2a}
+.val-row{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+.vbadge{padding:3px 10px;border-radius:12px;font-size:10px;font-weight:600}
+.vok{background:#1a3a1a;color:#3fb950;border:1px solid #3fb95033}
+.vwarn{background:#3a2a00;color:#d29922;border:1px solid #d2992233}
+.verr{background:#3a1a1a;color:#f85149;border:1px solid #f8514933}
+.vmet{font-family:'JetBrains Mono',monospace;font-size:10px;color:#8b949e}
+.vmet span{color:#c9d1d9}
+.abtn{flex:1;padding:7px 6px;background:#21262d;border:1px solid #30363d;border-radius:7px;color:#c9d1d9;font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif;text-align:center;white-space:nowrap}
+.abtn:hover{background:#2d333b;border-color:#58a6ff44}
+.abtn.pri{background:#0e2a4a;border-color:#1f6feb44;color:#58a6ff}
+.abtn.pri:hover{background:#163557;border-color:#58a6ff}
+.aabox{display:none;background:#0d1117;border:1px solid #3fb95033;border-radius:8px;padding:10px}
+.aabox.show{display:block}
+.dcont{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:10px}
+.drow{display:flex;align-items:center;justify-content:space-between;padding:3px 0;border-bottom:1px solid #21262d22}
+.drow:last-child{border-bottom:none}
+.dlbl{font-size:10.5px;color:#8b949e;min-width:22px}
+.dval{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:#79c0ff}
+.dax{font-size:10px;color:#6e7681;font-family:'JetBrains Mono',monospace}
+/* Quaternion */
+.qf-box{background:#0d1117;border:1px solid #58a6ff33;border-radius:8px;padding:11px}
+.qf-formula{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#79c0ff;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #21262d}
+.qf-row{display:grid;grid-template-columns:20px 1fr auto;gap:4px 8px;align-items:center;padding:2px 0}
+.qfl{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-align:center}
+.qfv{font-family:'JetBrains Mono',monospace;font-size:10px;color:#6e7681}
+.qfa{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-align:right}
+.qnorm-bar{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:#0d1117;border:1px solid #21262d;border-radius:7px;margin-top:6px}
+.qnorm-lbl{font-size:10px;color:#8b949e}
+.qnorm-val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700}
+.qnorm-ok .qnorm-val{color:#3fb950}
+.qnorm-bad .qnorm-val{color:#f85149}
+.qrow{display:grid;grid-template-columns:18px 1fr 78px;gap:6px;align-items:center;padding:5px 10px;background:#0d1117;border-radius:7px;border:1px solid #21262d}
+.qlbl{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;text-align:center}
+.qnum{width:100%;background:#161b22;border:1px solid #21262d;border-radius:5px;color:#79c0ff;font-family:'JetBrains Mono',monospace;font-size:11px;text-align:center;padding:4px 2px;outline:none}
+.qnum:focus{border-color:#58a6ff}
+/* SLERP */
+.slerp-mini{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:9px}
+.slerp-caps{display:flex;gap:5px;margin-bottom:7px}
+.scap{flex:1;padding:5px 6px;background:#21262d;border:1px solid #30363d;border-radius:6px;text-align:center;font-size:10px;cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif;color:#8b949e;line-height:1.3}
+.scap:hover{border-color:#58a6ff44;color:#c9d1d9}
+.scap.set{background:#0e2a4a;border-color:#1f6feb;color:#58a6ff}
+.slerp-row{display:flex;align-items:center;gap:7px}
+.slerp-row input[type=range]{flex:1}
+.tdisp{font-family:'JetBrains Mono',monospace;font-size:10px;color:#79c0ff;min-width:28px;text-align:right}
+/* Axis-angle input */
+.aa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px}
+.aa-cell label{display:block;font-size:9px;margin-bottom:3px;font-weight:600}
+/* Compare */
+.cmp-card{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.cmp-card h3{font-size:11px;font-weight:600;color:#c9d1d9}
+.prop-table{width:100%;border-collapse:separate;border-spacing:2px;font-size:9px}
+.prop-table th{background:#21262d;color:#58a6ff;padding:5px 4px;text-align:center;font-weight:600;border-radius:4px}
+.prop-table th:first-child{text-align:left;color:#8b949e}
+.prop-table td{padding:4px 5px;border-radius:4px}
+.prop-table td:first-child{color:#8b949e;background:#0d1117}
+.prop-table td:not(:first-child){background:#161b22;text-align:center}
+.good{color:#3fb950}.warn2{color:#d29922}.bad2{color:#f85149}
+.gl-slider{display:flex;flex-direction:column;gap:5px;background:#0d1117;border:1px solid #21262d;border-radius:7px;padding:8px 10px}
+.gl-hdr{display:flex;justify-content:space-between}
+.gl-lbl{font-size:10.5px;color:#c9d1d9}.gl-val{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#58a6ff}
+.gl-status{font-size:10.5px;padding:6px 10px;border-radius:6px;text-align:center;font-weight:500;transition:all .3s}
+.gls-ok{background:#1a2a1a;color:#3fb950;border:1px solid #3fb95033}
+.gls-bad{background:#2a1f00;color:#d4a000;border:1px solid #a0770066}
+.drift-table{width:100%;border-collapse:separate;border-spacing:2px;font-size:9.5px;margin-top:4px}
+.drift-table th{background:#21262d;color:#58a6ff;padding:5px 4px;border-radius:3px;font-size:9px;font-weight:600}
+.drift-table td{background:#161b22;padding:5px 4px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:9px;text-align:center}
+.drift-table td:first-child{color:#6e7681}
+.eff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.eff-card{background:#161b22;border-radius:6px;padding:8px 6px;text-align:center}
+.eff-title{font-size:9px;color:#8b949e;margin-bottom:4px}
+.eff-big{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+.eff-sub{font-size:8px;color:#6e7681;margin-top:2px}
+</style>
+</head>
+<body>
+<div id="vp">
+  <canvas id="c"></canvas>
+  <div id="hud"><b id="hudM">Euler · Body · ZYX</b><br><span id="hudQ" class="hq">q = (1.000, 0.000, 0.000, 0.000)</span></div>
+  <div id="hint">Drag to orbit &nbsp;·&nbsp; Scroll to zoom</div>
+  <div id="mpick">
+    <select onchange="switchModel(this.value)" title="Change 3D model">
+      <option value="aircraft">✈ Aircraft</option>
+      <option value="drone">🚁 Drone</option>
+      <option value="cube">⬛ Cube</option>
+      <option value="satellite">🛸 Satellite</option>
+      <option value="camera">📷 Camera</option>
+      <option value="rocket">🚀 Rocket</option>
+    </select>
+  </div>
+</div>
+
+<div id="panel">
+  <div class="panelhead"><div class="ph1">Rotation Explorer</div><div class="ph2">Euler · Matrix · Quaternion — interactive 3D</div></div>
+  <div class="tabbar">
+    <button class="tab on" onclick="setTab('euler')">Euler ∠</button>
+    <button class="tab" onclick="setTab('matrix')">Matrix</button>
+    <button class="tab" onclick="setTab('quat')">Quat q</button>
+    <button class="tab" onclick="setTab('compare')">Compare</button>
+  </div>
+
+  <!-- ══ EULER ══ -->
+  <div id="ep" class="tc">
+    <div class="tab-intro"><strong>Euler Angles</strong> describe orientation as three sequential rotations about coordinate axes: <strong>φ</strong> (Roll/X), <strong>θ</strong> (Pitch/Y), <strong>ψ</strong> (Yaw/Z). Simple and intuitive — but prone to gimbal lock when the middle angle reaches ±90°.</div>
+    <div><div class="slbl">Convention</div>
+      <div class="tog" id="etog">
+        <button class="tb2 on" onclick="setConv('body')">Body (Intrinsic)</button>
+        <button class="tb2" onclick="setConv('space')">Space (Extrinsic)</button>
+      </div></div>
+    <div><div class="slbl">Rotation Order</div>
+      <div class="sw"><select id="osel" onchange="setOrder(this.value)">
+        <option value="ZYX">3-2-1 · Z→Y→X · Aerospace</option>
+        <option value="XYZ">1-2-3 · X→Y→Z</option>
+        <option value="YXZ">2-1-3 · Y→X→Z</option>
+        <option value="XZY">1-3-2 · X→Z→Y</option>
+        <option value="ZXY">3-1-2 · Z→X→Y</option>
+        <option value="YZX">2-3-1 · Y→Z→X</option>
+        <option value="ZXZ">Z-X-Z · Classic Euler</option>
+        <option value="ZYZ">Z-Y-Z · Classic Euler</option>
+        <option value="XZX">X-Z-X · Classic Euler</option>
+        <option value="XYX">X-Y-X · Classic Euler</option>
+      </select></div></div>
+    <div><div class="slbl">Angles</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="ac"><div class="ah"><div class="an"><span class="adot" id="d0"></span><span id="l0">–</span></div><span class="av" id="v0">0.0°</span></div><input type="range" id="r0" min="-180" max="180" value="0" step="0.5" oninput="slide(0,+this.value)"></div>
+        <div class="ac"><div class="ah"><div class="an"><span class="adot" id="d1"></span><span id="l1">–</span></div><span class="av" id="v1">0.0°</span></div><input type="range" id="r1" min="-180" max="180" value="0" step="0.5" oninput="slide(1,+this.value)"></div>
+        <div class="ac"><div class="ah"><div class="an"><span class="adot" id="d2"></span><span id="l2">–</span></div><span class="av" id="v2">0.0°</span></div><input type="range" id="r2" min="-180" max="180" value="0" step="0.5" oninput="slide(2,+this.value)"></div>
+      </div></div>
+    <div class="gw" id="gw">⚠ <strong>Near Gimbal Lock</strong> — middle angle ≈ ±90°. One DOF is lost. See Compare tab.</div>
+    <div><div class="slbl">Rotation Matrix</div><div class="mw"><div class="mg" id="mg"></div></div></div>
+    <div class="info" id="inf"></div>
+    <div><div class="slbl">SLERP — Capture Orientations &amp; Animate</div>
+      <div class="slerp-mini">
+        <div class="slerp-caps">
+          <button class="scap" id="eCapA" onclick="captureA()">📍 Capture A<br><span id="eCapALbl" style="font-size:9px;color:#6e7681">not set</span></button>
+          <button class="scap" id="eCapB" onclick="captureB()">📍 Capture B<br><span id="eCapBLbl" style="font-size:9px;color:#6e7681">not set</span></button>
+        </div>
+        <div class="slerp-row">
+          <span style="font-size:10px;color:#6e7681">t</span>
+          <input type="range" class="slerp-range" min="0" max="1" step="0.001" value="0" oninput="onSlerpT(+this.value)">
+          <span class="tdisp slerp-disp">0%</span>
+          <button class="abtn" onclick="playSlerpAnim()" id="slerpBtn" style="flex:none;padding:5px 10px;font-size:11px">▶</button>
+        </div>
+      </div></div>
+    <div><div class="slbl">Options</div><label class="cr"><input type="checkbox" id="chkI" onchange="setInter(this.checked)"><span>Show intermediate frames</span></label></div>
+    <div><div class="slbl">Legend</div>
+      <div class="leg">
+        <div class="lr"><div class="li"><div class="ll" style="background:#ff4444;opacity:.35"></div>World X</div><div class="li"><div class="ll" style="background:#33dd55;opacity:.35"></div>World Y</div><div class="li"><div class="ll" style="background:#4499ff;opacity:.35"></div>World Z</div></div>
+        <div class="lr"><div class="li"><div class="ll" style="background:#ff5555"></div>Body x</div><div class="li"><div class="ll" style="background:#33dd55"></div>Body y</div><div class="li"><div class="ll" style="background:#4499ff"></div>Body z</div></div>
+      </div></div>
+    <div><div class="slbl">Presets</div>
+      <div class="pg">
+        <button class="pb" onclick="go(45,0,0)">45° 1st axis</button>
+        <button class="pb" onclick="go(0,45,0)">45° 2nd axis</button>
+        <button class="pb" onclick="go(0,0,45)">45° 3rd axis</button>
+        <button class="pb" onclick="go(30,45,60)">φ30 θ45 ψ60</button>
+        <button class="pb" onclick="go(45,89,20)">Near Gimbal Lock</button>
+        <button class="pb" onclick="go(0,0,0)">Reset</button>
+      </div></div>
+  </div>
+
+  <!-- ══ MATRIX ══ -->
+  <div id="mp" class="tc" style="display:none">
+    <div class="tab-intro"><strong>Rotation Matrix</strong> R ∈ SO(3) is a 3×3 orthogonal matrix with det(R) = +1. Its <em>columns</em> are the body-frame axes expressed in world coordinates — making it geometrically transparent. No singularities, but redundant (9 values for 3 DOF).</div>
+    <div><div class="slbl">Matrix Input — columns = body axes in world</div>
+      <div class="mat-wrap">
+        <div class="col-hdr"><div class="ch" style="color:#ff5555">body x</div><div class="ch" style="color:#33dd55">body y</div><div class="ch" style="color:#4499ff">body z</div></div>
+        <div class="mat-grid" id="mig"></div>
+      </div></div>
+    <div><div class="slbl">Validity</div>
+      <div class="val-row"><span class="vbadge" id="vbadge">—</span><span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6e7681" id="vstat"></span></div>
+      <div style="display:flex;gap:14px"><span class="vmet">det = <span id="vdet">—</span></span><span class="vmet">‖RᵀR−I‖ = <span id="vorth">—</span></span></div></div>
+    <div><div class="slbl">Operations</div>
+      <div style="display:flex;gap:5px">
+        <button class="abtn" onclick="doOrtho()">Orthogonalize</button>
+        <button class="abtn" onclick="doTranspose()">Transpose R⁻¹</button>
+        <button class="abtn" onclick="doAxisAngle()">Axis-Angle</button>
+      </div>
+      <div class="aabox" id="aabox" style="margin-top:8px">
+        <div style="font-size:10px;color:#8b949e;margin-bottom:6px">Extracted from R using θ = arccos((tr(R)−1)/2) :</div>
+        <div class="drow"><span class="dlbl">θ</span><span class="dval" id="aaTheta">—</span><span class="dax">rotation angle</span></div>
+        <div class="drow"><span class="dlbl">n̂</span><span class="dval" id="aaAxis">—</span><span class="dax">unit axis</span></div>
+      </div></div>
+    <div><div class="slbl">SLERP</div>
+      <div class="slerp-mini">
+        <div class="slerp-caps">
+          <button class="scap" id="mCapA" onclick="captureA()">📍 A<br><span id="mCapALbl" style="font-size:9px;color:#6e7681">not set</span></button>
+          <button class="scap" id="mCapB" onclick="captureB()">📍 B<br><span id="mCapBLbl" style="font-size:9px;color:#6e7681">not set</span></button>
+        </div>
+        <div class="slerp-row">
+          <span style="font-size:10px;color:#6e7681">t</span>
+          <input type="range" class="slerp-range" min="0" max="1" step="0.001" value="0" oninput="onSlerpT(+this.value)">
+          <span class="tdisp slerp-disp">0%</span>
+          <button class="abtn" onclick="playSlerpAnim()" style="flex:none;padding:5px 10px;font-size:11px">▶</button>
+        </div>
+      </div></div>
+    <div><div class="slbl">Euler Decomposition</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:6px">
+          <div class="tog" id="dtog" style="flex:1"><button class="tb2 on" onclick="setDConv('body')">Body</button><button class="tb2" onclick="setDConv('space')">Space</button></div>
+          <div class="sw" style="flex:1.5"><select id="dOrd" onchange="refreshDecomp()"><option value="ZYX">ZYX 3-2-1</option><option value="XYZ">XYZ 1-2-3</option><option value="YXZ">YXZ</option><option value="XZY">XZY</option><option value="ZXY">ZXY</option><option value="YZX">YZX</option><option value="ZXZ">ZXZ</option><option value="ZYZ">ZYZ</option><option value="XZX">XZX</option><option value="XYX">XYX</option></select></div>
+        </div>
+        <div class="dcont"><div class="drow"><span class="dlbl">α₁</span><span class="dval" id="da0">—</span><span class="dax" id="dax0">—</span></div><div class="drow"><span class="dlbl">α₂</span><span class="dval" id="da1">—</span><span class="dax" id="dax1">—</span></div><div class="drow"><span class="dlbl">α₃</span><span class="dval" id="da2">—</span><span class="dax" id="dax2">—</span></div></div>
+        <button class="abtn pri" onclick="sendToEuler()">Send to Euler Tab →</button>
+      </div></div>
+    <div><div class="slbl">Presets</div>
+      <div class="pg">
+        <button class="pb" onclick="mPreset('I')">Identity</button>
+        <button class="pb" onclick="mPreset('Rx90')">Rₓ(90°)</button>
+        <button class="pb" onclick="mPreset('Ry90')">R_y(90°)</button>
+        <button class="pb" onclick="mPreset('Rz90')">R_z(90°)</button>
+        <button class="pb" onclick="mPreset('rand')">Random SO(3)</button>
+        <button class="pb" onclick="mPreset('fromEuler')">From Euler</button>
+      </div></div>
+  </div>
+
+  <!-- ══ QUATERNION ══ -->
+  <div id="qp" class="tc" style="display:none">
+    <div class="tab-intro"><strong>Quaternion</strong> q = w + xi + yj + zk encodes a rotation by angle <strong>θ</strong> about unit axis <strong>n̂</strong> as: <em>w = cos(θ/2)</em>, and x,y,z = <em>sin(θ/2)·n̂</em>. No singularities, compact (4 values), ideal for interpolation and composition.</div>
+
+    <div><div class="slbl">Set via Axis-Angle (Most Intuitive)</div>
+      <div class="ac">
+        <div class="ah"><div class="an" style="font-size:11px;color:#c9d1d9">θ Rotation Angle</div><span class="av" id="aaAngDisp">0.0°</span></div>
+        <input type="range" class="rw" id="aaAngle" min="0" max="360" value="0" step="0.5" oninput="onAAChange()">
+      </div>
+      <div class="aa-grid">
+        <div><label style="font-size:9px;color:#ff5555;display:block;margin-bottom:3px">nₓ (Roll axis)</label><input class="mci" id="aaNx" value="1" oninput="onAAChange()"></div>
+        <div><label style="font-size:9px;color:#33dd55;display:block;margin-bottom:3px">nᵧ (Pitch axis)</label><input class="mci" id="aaNy" value="0" oninput="onAAChange()"></div>
+        <div><label style="font-size:9px;color:#4499ff;display:block;margin-bottom:3px">n_z (Yaw axis)</label><input class="mci" id="aaNz" value="0" oninput="onAAChange()"></div>
+      </div>
+      <div style="display:flex;gap:5px;margin-top:6px">
+        <button class="pb" onclick="setAAAxis(1,0,0)">φ Roll (x)</button>
+        <button class="pb" onclick="setAAAxis(0,1,0)">θ Pitch (y)</button>
+        <button class="pb" onclick="setAAAxis(0,0,1)">ψ Yaw (z)</button>
+      </div></div>
+
+    <div><div class="slbl">Formula Breakdown — how components are computed</div>
+      <div class="qf-box">
+        <div class="qf-formula">q = cos(θ/2) + sin(θ/2)·(nₓ<b style="color:#ff5555">i</b> + nᵧ<b style="color:#33dd55">j</b> + n_z<b style="color:#4499ff">k</b>)</div>
+        <div id="qfBreak">
+          <div class="qf-row"><span class="qfl">θ</span><span class="qfv">—</span><span class="qfa" style="color:#cc88ff">—</span></div>
+          <div class="qf-row"><span class="qfl">n̂</span><span class="qfv">axis direction</span><span class="qfa" style="color:#8b949e">—</span></div>
+          <div style="height:1px;background:#21262d;margin:5px 0"></div>
+          <div class="qf-row"><span class="qfl" style="color:#cc88ff">w</span><span class="qfv">cos(θ/2)</span><span class="qfa" style="color:#cc88ff">—</span></div>
+          <div class="qf-row"><span class="qfl" style="color:#ff5555">x</span><span class="qfv">sin(θ/2)·nₓ</span><span class="qfa" style="color:#ff5555">—</span></div>
+          <div class="qf-row"><span class="qfl" style="color:#33dd55">y</span><span class="qfv">sin(θ/2)·nᵧ</span><span class="qfa" style="color:#33dd55">—</span></div>
+          <div class="qf-row"><span class="qfl" style="color:#4499ff">z</span><span class="qfv">sin(θ/2)·n_z</span><span class="qfa" style="color:#4499ff">—</span></div>
+        </div>
+      </div></div>
+
+    <div><div class="slbl">Raw Components (editable)</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div class="qrow"><span class="qlbl" style="color:#cc88ff">w</span><input type="range" class="rw" id="qws" min="-1" max="1" step="0.001" value="1" oninput="onQSlide('w',+this.value)"><input class="qnum" id="qw" value="1.00000" oninput="onQNum('w',this.value)"></div>
+        <div class="qrow"><span class="qlbl" style="color:#ff5555">x</span><input type="range" class="rx" id="qxs" min="-1" max="1" step="0.001" value="0" oninput="onQSlide('x',+this.value)"><input class="qnum" id="qx" value="0.00000" oninput="onQNum('x',this.value)"></div>
+        <div class="qrow"><span class="qlbl" style="color:#33dd55">y</span><input type="range" class="ry" id="qys" min="-1" max="1" step="0.001" value="0" oninput="onQSlide('y',+this.value)"><input class="qnum" id="qy" value="0.00000" oninput="onQNum('y',this.value)"></div>
+        <div class="qrow"><span class="qlbl" style="color:#4499ff">z</span><input type="range" class="rz" id="qzs" min="-1" max="1" step="0.001" value="0" oninput="onQSlide('z',+this.value)"><input class="qnum" id="qz" value="0.00000" oninput="onQNum('z',this.value)"></div>
+      </div>
+      <div class="qnorm-bar qnorm-ok" id="qnormBar">
+        <div><span class="qnorm-lbl">|q|² = w²+x²+y²+z² &nbsp;</span><span class="qnorm-val" id="qnormVal">= 1.00000 ✓</span></div>
+        <button class="abtn" style="flex:none;padding:4px 10px;font-size:10.5px" onclick="doNormalizeQ()">Normalize</button>
+      </div>
+      <div style="font-size:9.5px;color:#6e7681;margin-top:5px;line-height:1.5;padding:0 2px">⚠ If |q| ≠ 1, the quaternion does not represent a pure rotation — it scales or skews the result. Drag sliders freely to see the effect, then Normalize to restore validity.</div></div>
+
+    <div><div class="slbl">Double Cover — q and −q are identical rotations</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="abtn" onclick="doNegateQ()">Show −q</button>
+        <span style="font-size:10px;color:#6e7681;flex:1;line-height:1.5">Negating all components produces the same 3D orientation — the object doesn't move. This is the "double cover" of SO(3) by the unit sphere S³.</span>
+      </div></div>
+
+    <div><div class="slbl">SLERP — Shortest Arc Interpolation on SO(3)</div>
+      <div class="slerp-mini">
+        <div class="slerp-caps">
+          <button class="scap" id="qCapA" onclick="captureA()">📍 Capture A<br><span id="qCapALbl" style="font-size:9px;color:#6e7681">not set</span></button>
+          <button class="scap" id="qCapB" onclick="captureB()">📍 Capture B<br><span id="qCapBLbl" style="font-size:9px;color:#6e7681">not set</span></button>
+        </div>
+        <div class="slerp-row">
+          <span style="font-size:10px;color:#6e7681">t</span>
+          <input type="range" class="slerp-range" min="0" max="1" step="0.001" value="0" oninput="onSlerpT(+this.value)">
+          <span class="tdisp slerp-disp">0%</span>
+          <button class="abtn" onclick="playSlerpAnim()" style="flex:none;padding:5px 10px;font-size:11px">▶</button>
+        </div>
+        <div style="font-size:9.5px;color:#6e7681;line-height:1.5">SLERP interpolates along the <em>great circle</em> on S³ — constant angular velocity, shortest path. Unlike Euler LERP which produces non-uniform, potentially large-arc interpolation.</div>
+      </div></div>
+
+    <div><div class="slbl">Resulting R (derived)</div><div class="mw"><div class="mg" id="qmg"></div></div></div>
+  </div>
+
+  <!-- ══ COMPARE ══ -->
+  <div id="cp" class="tc" style="display:none">
+    <div class="tab-intro"><strong>Comparison</strong> — Euler angles are intuitive but singular; rotation matrices are universal but redundant; quaternions are the engineering sweet-spot. Use the interactive demos below to build intuition for when each representation shines.</div>
+
+    <div class="cmp-card">
+      <h3>📊 Representation Properties</h3>
+      <table class="prop-table">
+        <tr><th></th><th>Euler</th><th>Matrix</th><th>Quaternion</th></tr>
+        <tr><td>Parameters</td><td class="warn2">3 minimal</td><td class="bad2">9 redundant</td><td class="good">4 compact</td></tr>
+        <tr><td>Singularity</td><td class="bad2">Gimbal lock ⚠</td><td class="good">None ✓</td><td class="good">None ✓</td></tr>
+        <tr><td>Compose cost</td><td class="bad2">Trig-heavy</td><td class="warn2">27 mul</td><td class="good">16 mul</td></tr>
+        <tr><td>Renormalize</td><td>—</td><td class="bad2">Gram-Schmidt</td><td class="good">÷|q| (5 ops)</td></tr>
+        <tr><td>Interpolation</td><td class="bad2">Non-uniform</td><td class="bad2">Complex</td><td class="good">SLERP ✓</td></tr>
+        <tr><td>Human intuition</td><td class="good">High ✓</td><td class="bad2">Low</td><td class="warn2">Medium</td></tr>
+      </table>
+    </div>
+
+    <div class="cmp-card">
+      <h3>🔒 Gimbal Lock — Interactive (ZYX Body)</h3>
+      <div class="gl-slider"><div class="gl-hdr"><span class="gl-lbl">ψ Yaw (Z)</span><span class="gl-val" id="gvPsi">0.0°</span></div><input type="range" id="grPsi" min="-180" max="180" value="0" step="0.5" oninput="onGL('psi',+this.value)"></div>
+      <div class="gl-slider"><div class="gl-hdr"><span class="gl-lbl">θ Pitch (Y) ← drag to ±90°</span><span class="gl-val" id="gvTheta">0.0°</span></div><input type="range" id="grTheta" min="-90" max="90" value="0" step="0.5" oninput="onGL('theta',+this.value)"></div>
+      <div class="gl-slider"><div class="gl-hdr"><span class="gl-lbl">φ Roll (X)</span><span class="gl-val" id="gvPhi">0.0°</span></div><input type="range" id="grPhi" min="-180" max="180" value="0" step="0.5" oninput="onGL('phi',+this.value)"></div>
+      <div class="gl-status gls-ok" id="glStatus">Axes independent (3 DOF active)</div>
+      <div style="font-size:9.5px;color:#6e7681;line-height:1.6">The <span style="color:#ffd700">gold</span>, <span style="color:#ff9900">orange</span>, <span style="color:#ff4400">red-orange</span> arrows show the three rotation axes. At θ = ±90°, two axes align → one DOF is permanently lost. A quaternion has no such issue.</div>
+    </div>
+
+    <div class="cmp-card">
+      <h3>🖥 Numerical Drift — Floating-Point Error Accumulation</h3>
+      <div style="font-size:9.5px;color:#6e7681;line-height:1.6">Apply N random small rotations in sequence. Floating-point rounding causes both representations to drift from their constraints. Each click runs a fresh simulation with a new random seed — compare across runs.</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <div class="sw" style="flex:1"><select id="driftN"><option value="1000">N = 1,000</option><option value="5000">N = 5,000</option><option value="10000" selected>N = 10,000</option><option value="50000">N = 50,000</option><option value="100000">N = 100,000</option></select></div>
+        <button class="abtn" style="flex:none" onclick="runDrift()">Run New</button>
+        <button class="abtn" style="flex:none" onclick="clearDrift()">Clear</button>
+      </div>
+      <table class="drift-table" id="driftTable" style="display:none">
+        <thead><tr><th>#</th><th>N</th><th>Matrix ‖RᵀR−I‖</th><th>Quat |1−|q||</th><th>Ratio</th></tr></thead>
+        <tbody id="driftBody"></tbody>
+      </table>
+      <div style="font-size:9.5px;color:#6e7681;margin-top:4px;line-height:1.6">Even if drift magnitudes are similar, quaternion renormalization costs <strong style="color:#3fb950">~5 ops</strong> (divide by norm) vs matrix Gram-Schmidt at <strong style="color:#f85149">~40 ops</strong>.</div>
+    </div>
+
+    <div class="cmp-card">
+      <h3>⚡ Composition Cost</h3>
+      <div class="eff-grid">
+        <div class="eff-card"><div class="eff-title">Euler</div><div class="eff-big bad2">N/A</div><div class="eff-sub">Must convert to matrix or quat first</div></div>
+        <div class="eff-card"><div class="eff-title">Matrix × Matrix</div><div class="eff-big warn2">27 mul</div><div class="eff-sub">+ 18 add per composition</div></div>
+        <div class="eff-card"><div class="eff-title">Quat × Quat</div><div class="eff-big good">16 mul</div><div class="eff-sub">+ 12 add — 40% fewer ops</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const GREEK = {X:'φ',Y:'θ',Z:'ψ'};
+const GREEKFULL = {X:'φ (Roll)',Y:'θ (Pitch)',Z:'ψ (Yaw)'};
+const ACLR = {X:'#ff5555',Y:'#33dd55',Z:'#4499ff'};
+const ARNG = {X:'rx',Y:'ry',Z:'rz'};
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let activeTab='euler', stateQ=new THREE.Quaternion(0,0,0,1);
+let eConv='body',eOrd='ZYX',eAng=[0,0,0],eInter=false;
+let mInit=false,dConv='body',decompAngles=[NaN,NaN,NaN];
+let slerpA=new THREE.Quaternion(0,0,0,1),slerpB=new THREE.Quaternion(0,0,0,1);
+let slerpT=0,slerpPlaying=false,slerpASet=false,slerpBSet=false;
+let gPsi=0,gTheta=0,gPhi=0;
+let driftRuns=[], prevTime=performance.now();
+
+// ── THREE Scene ────────────────────────────────────────────────────────────────
+const cv=$('c'),vpd=$('vp');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0d1117);
+const cam=new THREE.PerspectiveCamera(52,1,.05,100);
+scene.add(new THREE.AmbientLight(0xffffff,.55));
+const sun=new THREE.DirectionalLight(0xffffff,.95); sun.position.set(5,10,8); scene.add(sun);
+const fl=new THREE.DirectionalLight(0x6699ff,.35); fl.position.set(-6,2,-6); scene.add(fl);
+const grid=new THREE.GridHelper(12,24,0x161c25,0x161c25); grid.position.y=-1.9; scene.add(grid);
+
+function mkArr(ax,col,op,len=2.5){
+  const d={X:[1,0,0],Y:[0,1,0],Z:[0,0,1]}[ax];
+  const a=new THREE.ArrowHelper(new THREE.Vector3(...d),new THREE.Vector3(),len,col,len*.13,len*.08);
+  a.line.material.transparent=true;a.line.material.opacity=op;
+  a.cone.material.transparent=true;a.cone.material.opacity=op;
+  return a;
+}
+const wGrp=new THREE.Group();
+['X','Y','Z'].forEach((ax,i)=>wGrp.add(mkArr(ax,[0xff3333,0x33cc55,0x3366ff][i],.27,2.8)));
+scene.add(wGrp);
+
+const bGrp=new THREE.Group();
+bGrp.add(mkArr('X',0xff5555,1,2.1),mkArr('Y',0x33dd55,1,2.1),mkArr('Z',0x4499ff,1,2.1));
+
+// Model container
+const modelGrp=new THREE.Group(); bGrp.add(modelGrp); scene.add(bGrp);
+
+const ph=c=>new THREE.MeshPhongMaterial({color:c,specular:0x334455,shininess:55});
+const phT=(c,o)=>new THREE.MeshPhongMaterial({color:c,transparent:true,opacity:o,shininess:40});
+
+// ── 3D Models ──────────────────────────────────────────────────────────────────
+const models={};
+function buildAircraft(){
+  const g=new THREE.Group();
+  const fs=new THREE.Mesh(new THREE.CylinderGeometry(.075,.055,1.9,20),ph(0x7799bb)); fs.rotation.z=Math.PI/2; g.add(fs);
+  const ns=new THREE.Mesh(new THREE.ConeGeometry(.075,.42,20),ph(0xbbddff)); ns.rotation.z=-Math.PI/2; ns.position.x=1.16; g.add(ns);
+  const wg=new THREE.Mesh(new THREE.BoxGeometry(.52,.024,2.35),ph(0x4d6088)); wg.position.x=-0.05; g.add(wg);
+  const ht=new THREE.Mesh(new THREE.BoxGeometry(.28,.024,.95),ph(0x3d5070)); ht.position.x=-0.87; g.add(ht);
+  const vt=new THREE.Mesh(new THREE.BoxGeometry(.28,.38,.024),ph(0x3d5070)); vt.position.set(-0.87,.19,0); g.add(vt);
+  return g;
+}
+function buildDrone(){
+  const g=new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.08,8),ph(0x445566)));
+  const dome=new THREE.Mesh(new THREE.CylinderGeometry(.1,.22,.06,8),ph(0x334455)); dome.position.y=.07; g.add(dome);
+  const ns=new THREE.Mesh(new THREE.ConeGeometry(.04,.14,8),new THREE.MeshPhongMaterial({color:0xff4444,shininess:80})); ns.rotation.z=-Math.PI/2; ns.position.x=.28; g.add(ns);
+  [[.75,0,.75],[-.75,0,-.75],[.75,0,-.75],[-.75,0,.75]].forEach(([x,y,z],i)=>{
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(.023,.023,.75,8),ph(0x556677)); arm.rotation.z=Math.PI/2; arm.rotation.y=-Math.atan2(x,z); arm.position.set(x*.45,0,z*.45); g.add(arm);
+    const mot=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.06,12),ph(0x778899)); mot.position.set(x,.03,z); g.add(mot);
+    const rot=new THREE.Mesh(new THREE.CylinderGeometry(.27,.27,.012,16),phT(i%2?0x334422:0x223344,.65)); rot.position.set(x,.07,z); g.add(rot);
+  });
+  return g;
+}
+function buildCube(){
+  const g=new THREE.Group(), s=0.76;
+  const fd=[
+    [ s, 0, 0, [0,  Math.PI/2, 0], 0xff4444],
+    [-s, 0, 0, [0, -Math.PI/2, 0], 0x882222],
+    [0,  s, 0, [-Math.PI/2, 0, 0], 0x33cc33],
+    [0, -s, 0, [ Math.PI/2, 0, 0], 0x116611],
+    [0,  0, s, [0, 0, 0],          0x4488ff],
+    [0,  0,-s, [0, Math.PI, 0],    0x224499]
+  ];
+  fd.forEach(([px,py,pz,rot,col])=>{
+    const f=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.5),new THREE.MeshPhongMaterial({color:col}));
+    f.position.set(px,py,pz); f.rotation.set(...rot); g.add(f);
+  });
+  const edges=new THREE.EdgesGeometry(new THREE.BoxGeometry(1.52,1.52,1.52));
+  g.add(new THREE.LineSegments(edges,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.35})));
+  return g;
+}
+function buildSatellite(){
+  const g=new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(.7,.5,.7),ph(0x8899aa)));
+  [.9,-.9].forEach(x=>{
+    const p=new THREE.Mesh(new THREE.BoxGeometry(.05,.6,1.8),ph(0x1133bb)); p.position.x=x; g.add(p);
+    const c=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.55,8),ph(0x445566)); c.rotation.z=Math.PI/2; c.position.x=x*.58; g.add(c);
+  });
+  const dish=new THREE.Mesh(new THREE.CylinderGeometry(.28,.02,.08,16),ph(0xccddee)); dish.position.set(0,.35,0); g.add(dish);
+  const arm=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.3,8),ph(0x556677)); arm.position.set(0,.22,0); g.add(arm);
+  return g;
+}
+function buildCamera(){
+  const g=new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(.85,.55,.46),ph(0x1a1a1a)));
+  const lo=new THREE.Mesh(new THREE.CylinderGeometry(.2,.22,.44,16),ph(0x2a2a2a)); lo.rotation.z=Math.PI/2; lo.position.x=.62; g.add(lo);
+  const lg=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.02,16),phT(0x3366aa,.85)); lg.rotation.z=Math.PI/2; lg.position.x=.85; g.add(lg);
+  const grip=new THREE.Mesh(new THREE.BoxGeometry(.65,.28,.46),ph(0x151515)); grip.position.set(-.08,-.42,0); g.add(grip);
+  const vf=new THREE.Mesh(new THREE.BoxGeometry(.28,.14,.3),ph(0x111111)); vf.position.set(-.05,.36,0); g.add(vf);
+  return g;
+}
+function buildRocket(){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,2.0,16),ph(0xbbccdd)); body.rotation.z=Math.PI/2; body.position.x=.1; g.add(body);
+  const nose=new THREE.Mesh(new THREE.ConeGeometry(.12,.5,16),ph(0xeeddcc)); nose.rotation.z=-Math.PI/2; nose.position.x=1.35; g.add(nose);
+  [0,Math.PI/2,Math.PI,-Math.PI/2].forEach(a=>{
+    const fin=new THREE.Mesh(new THREE.BoxGeometry(.45,.02,.28),ph(0x88aabb));
+    fin.rotation.x=a; fin.position.set(-.65,Math.cos(a)*.14,Math.sin(a)*.14); g.add(fin);
+  });
+  const noz=new THREE.Mesh(new THREE.CylinderGeometry(.12,.16,.2,16),ph(0x667788)); noz.rotation.z=Math.PI/2; noz.position.x=-.98; g.add(noz);
+  const fl=new THREE.Mesh(new THREE.ConeGeometry(.08,.35,12),new THREE.MeshPhongMaterial({color:0xff6600,emissive:0xff2200,transparent:true,opacity:.8})); fl.rotation.z=Math.PI/2; fl.position.x=-1.28; g.add(fl);
+  return g;
+}
+
+const builders={aircraft:buildAircraft,drone:buildDrone,cube:buildCube,satellite:buildSatellite,camera:buildCamera,rocket:buildRocket};
+function switchModel(name){
+  Object.values(models).forEach(m=>m.visible=false);
+  if(!models[name]){models[name]=builders[name]();modelGrp.add(models[name]);}
+  models[name].visible=true;
+}
+switchModel('aircraft');
+
+// Intermediate frames
+const iG1=new THREE.Group(),iG2=new THREE.Group();
+['X','Y','Z'].forEach(ax=>{const c={X:0xff3333,Y:0x33cc55,Z:0x3366ff}[ax];iG1.add(mkArr(ax,c,.38,1.85));iG2.add(mkArr(ax,c,.6,2.05));});
+iG1.visible=false;iG2.visible=false;scene.add(iG1,iG2);
+
+// Rotation axis arrow
+const axisArr=new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),2.8,0xffd700,.35,.16);
+axisArr.line.material.transparent=true;axisArr.line.material.opacity=.75;
+axisArr.cone.material.transparent=true;axisArr.cone.material.opacity=.75;
+axisArr.visible=false;scene.add(axisArr);
+
+// Gimbal arrows
+const gimbalArrs=[
+  new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(),2.4,0xffd700,.3,.14),
+  new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),2.4,0xff9900,.3,.14),
+  new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),2.4,0xff4400,.3,.14)
+];
+gimbalArrs.forEach(a=>{a.line.material.transparent=true;a.line.material.opacity=.8;a.cone.material.transparent=true;a.cone.material.opacity=.8;a.visible=false;scene.add(a);});
+
+// Labels
+const lbls={};
+[['wx','X','#ff5555',12,.45],['wy','Y','#33dd55',12,.45],['wz','Z','#4499ff',12,.45],
+ ['bx','x','#ff5555',15,1],['by','y','#33dd55',15,1],['bz','z','#4499ff',15,1]
+].forEach(([id,t,col,fs,op])=>{
+  const el=document.createElement('div');el.className='axlbl';el.textContent=t;
+  el.style.cssText=`color:${col};opacity:${op};font-size:${fs}px;letter-spacing:.3px`;
+  vpd.appendChild(el);lbls[id]=el;
+});
+
+// Read-only matrix cells
+['mg','qmg'].forEach(pid=>{const p=$(pid);for(let i=0;i<9;i++){const c=document.createElement('div');c.className='mc';c.id=(pid==='mg'?'mc':'qmc')+i;p.appendChild(c);}});
+
+// Matrix input cells
+const migEl=$('mig');
+for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+  const inp=document.createElement('input');inp.type='text';inp.className='mci';
+  inp.dataset.r=r;inp.dataset.c=c;inp.value='0';
+  inp.addEventListener('input',onMI);
+  inp.addEventListener('blur',e=>{const v=parseFloat(e.target.value);if(!isNaN(v))e.target.value=+v.toFixed(6);});
+  migEl.appendChild(inp);
+}
+
+// Camera orbit
+let cθ=.85,cφ=.52,cR=7,drg=false,lpt={x:0,y:0};
+function updCam(){cam.position.set(cR*Math.cos(cφ)*Math.sin(cθ),cR*Math.sin(cφ),cR*Math.cos(cφ)*Math.cos(cθ));cam.lookAt(0,0,0);}
+updCam();
+cv.addEventListener('pointerdown',e=>{drg=true;lpt={x:e.clientX,y:e.clientY};cv.setPointerCapture(e.pointerId)});
+cv.addEventListener('pointermove',e=>{if(!drg)return;cθ-=(e.clientX-lpt.x)*.009;cφ=Math.max(.05,Math.min(1.4,cφ+(e.clientY-lpt.y)*.007));lpt={x:e.clientX,y:e.clientY};updCam()});
+cv.addEventListener('pointerup',()=>drg=false);
+cv.addEventListener('wheel',e=>{e.preventDefault();cR=Math.max(3,Math.min(18,cR+e.deltaY*.013));updCam()},{passive:false});
+
+// ── Math ──────────────────────────────────────────────────────────────────────
+const mul3=(A,B)=>new THREE.Matrix4().multiplyMatrices(A,B);
+function axM(ax,rad){const M=new THREE.Matrix4();if(ax==='X')M.makeRotationX(rad);else if(ax==='Y')M.makeRotationY(rad);else M.makeRotationZ(rad);return M;}
+function M4toArr(M){const m=M.elements;return[[m[0],m[4],m[8]],[m[1],m[5],m[9]],[m[2],m[6],m[10]]];}
+function ArrToM4(R){const M=new THREE.Matrix4();M.set(R[0][0],R[0][1],R[0][2],0,R[1][0],R[1][1],R[1][2],0,R[2][0],R[2][1],R[2][2],0,0,0,0,1);return M;}
+function det3(R){return R[0][0]*(R[1][1]*R[2][2]-R[1][2]*R[2][1])-R[0][1]*(R[1][0]*R[2][2]-R[1][2]*R[2][0])+R[0][2]*(R[1][0]*R[2][1]-R[1][1]*R[2][0]);}
+function mmul(A,B){const C=[[0,0,0],[0,0,0],[0,0,0]];for(let i=0;i<3;i++)for(let j=0;j<3;j++)for(let k=0;k<3;k++)C[i][j]+=A[i][k]*B[k][j];return C;}
+function tr(R){return[[R[0][0],R[1][0],R[2][0]],[R[0][1],R[1][1],R[2][1]],[R[0][2],R[1][2],R[2][2]]];}
+function frobDiff(A,B){let s=0;for(let i=0;i<3;i++)for(let j=0;j<3;j++){const d=A[i][j]-B[i][j];s+=d*d;}return Math.sqrt(s);}
+const I3=[[1,0,0],[0,1,0],[0,0,1]];
+function makeR3x3(n,a){const[nx,ny,nz]=n,c=Math.cos(a),s=Math.sin(a),t=1-c;return[[t*nx*nx+c,t*nx*ny-s*nz,t*nx*nz+s*ny],[t*nx*ny+s*nz,t*ny*ny+c,t*ny*nz-s*nx],[t*nx*nz-s*ny,t*ny*nz+s*nx,t*nz*nz+c]];}
+function gramSchmidt(R){
+  let c0=[R[0][0],R[1][0],R[2][0]],c1=[R[0][1],R[1][1],R[2][1]];
+  const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],nrm=v=>Math.sqrt(dot(v,v)),scl=(v,s)=>v.map(x=>x*s),sub=(a,b)=>a.map((x,i)=>x-b[i]),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  let n=nrm(c0);c0=n<1e-10?[1,0,0]:scl(c0,1/n);
+  c1=sub(c1,scl(c0,dot(c1,c0)));n=nrm(c1);c1=n<1e-10?[0,1,0]:scl(c1,1/n);
+  let c2=cross(c0,c1);
+  const out=[[c0[0],c1[0],c2[0]],[c0[1],c1[1],c2[1]],[c0[2],c1[2],c2[2]]];
+  if(det3(out)<0){c2=c2.map(x=>-x);return[[c0[0],c1[0],c2[0]],[c0[1],c1[1],c2[1]],[c0[2],c1[2],c2[2]]];}
+  return out;
+}
+function classicDecomp(R,order){
+  const a2d=r=>r*180/Math.PI,at2=(y,x)=>a2d(Math.atan2(y,x)),acos=x=>a2d(Math.acos(Math.max(-1,Math.min(1,x))));
+  switch(order){
+    case 'ZXZ':{const b=acos(R[2][2]);return[at2(R[0][2],-R[1][2]),b,at2(R[2][0],R[2][1])];}
+    case 'ZYZ':{const b=acos(R[2][2]);return[at2(R[1][2],R[0][2]),b,at2(R[2][1],-R[2][0])];}
+    case 'XZX':{const b=acos(R[0][0]);return[at2(R[2][0],R[1][0]),b,at2(R[0][2],-R[0][1])];}
+    case 'XYX':{const b=acos(R[0][0]);return[at2(R[1][0],-R[2][0]),b,at2(R[0][1],R[0][2])];}
+    default:return[NaN,NaN,NaN];
+  }
+}
+function quatToAxisAngle(q){
+  const w=q.w<0?-q.w:q.w,x=q.w<0?-q.x:q.x,y=q.w<0?-q.y:q.y,z=q.w<0?-q.z:q.z;
+  const theta=2*Math.acos(Math.min(1,w)),s=Math.sin(theta/2);
+  return s<1e-6?{theta:0,nx:1,ny:0,nz:0}:{theta:theta*180/Math.PI,nx:x/s,ny:y/s,nz:z/s};
+}
+
+// ── Core ──────────────────────────────────────────────────────────────────────
+function applyState(){
+  bGrp.setRotationFromQuaternion(stateQ);
+  updateReadonlyMat();
+  updateAxisArrow();
+  updateGimbalArrows();
+  refreshHUD();
+}
+function updateReadonlyMat(){
+  const M=new THREE.Matrix4().makeRotationFromQuaternion(stateQ),m=M.elements;
+  const vals=[m[0],m[4],m[8],m[1],m[5],m[9],m[2],m[6],m[10]];
+  vals.forEach((v,i)=>{['mc','qmc'].forEach(pfx=>{const el=$(pfx+i);if(!el)return;el.textContent=v.toFixed(3);el.style.color=v>0.005?'#79c0ff':v<-0.005?'#ff7b72':'#4a535c';});});
+}
+function updateAxisArrow(){
+  if(activeTab!=='quat'){axisArr.visible=false;return;}
+  const{theta,nx,ny,nz}=quatToAxisAngle(stateQ);
+  if(theta<0.5){axisArr.visible=false;return;}
+  axisArr.setDirection(new THREE.Vector3(nx,ny,nz));axisArr.visible=true;
+}
+function updateGimbalArrows(){gimbalArrs.forEach(a=>a.visible=activeTab==='compare');}
+function refreshHUD(){
+  let m='';
+  if(activeTab==='euler')m=`Euler · ${eConv==='body'?'Body':'Space'} · ${eOrd}`;
+  else if(activeTab==='matrix')m='Rotation Matrix';
+  else if(activeTab==='quat')m='Quaternion';
+  else m='Compare';
+  $('hudM').textContent=m;
+  $('hudQ').textContent=`q=(${stateQ.w.toFixed(3)}, ${stateQ.x.toFixed(3)}, ${stateQ.y.toFixed(3)}, ${stateQ.z.toFixed(3)})`;
+}
+
+// ── Euler Tab ─────────────────────────────────────────────────────────────────
+function calcEulerM4(){
+  const axes=eOrd.split(''),r=eAng.map(d=>d*Math.PI/180),R=axes.map((ax,i)=>axM(ax,r[i]));
+  return eConv==='body'?mul3(R[0],mul3(R[1],R[2])):mul3(R[2],mul3(R[1],R[0]));
+}
+function onEulerChange(){
+  stateQ.setFromRotationMatrix(calcEulerM4());
+  applyState();
+  if(eInter){const axes=eOrd.split(''),r=eAng.map(d=>d*Math.PI/180);const M1=axM(axes[0],r[0]);const M2=eConv==='body'?mul3(M1,axM(axes[1],r[1])):mul3(axM(axes[1],r[1]),M1);iG1.setRotationFromQuaternion(new THREE.Quaternion().setFromRotationMatrix(M1));iG2.setRotationFromQuaternion(new THREE.Quaternion().setFromRotationMatrix(M2));}
+  const tait=new Set(eOrd.split('')).size===3;
+  const gl=tait?Math.abs(Math.abs(eAng[1])-90)<8:eAng[1]<8||Math.abs(Math.abs(eAng[1])-180)<8;
+  $('gw').classList.toggle('show',gl);
+}
+function seedEulerFromState(){
+  const M=new THREE.Matrix4().makeRotationFromQuaternion(stateQ);
+  const arr=M4toArr(M);const axes=eOrd.split('');const tait=new Set(axes).size===3;
+  let angles;
+  if(tait){const tOrd=eConv==='body'?eOrd:[...axes].reverse().join('');const e=new THREE.Euler().setFromRotationMatrix(M,tOrd);const em={X:e.x*180/Math.PI,Y:e.y*180/Math.PI,Z:e.z*180/Math.PI};angles=axes.map(ax=>em[ax]);}
+  else{angles=classicDecomp(eConv==='space'?tr(arr):arr,eOrd);}
+  eAng=angles.map(v=>isNaN(v)?0:parseFloat(v.toFixed(4)));
+  for(let i=0;i<3;i++){$('r'+i).value=Math.max(-180,Math.min(180,eAng[i]));$('v'+i).textContent=eAng[i].toFixed(1)+'°';}
+}
+function refreshEulerUI(){
+  const axes=eOrd.split(''),isT=new Set(axes).size===3;
+  for(let i=0;i<3;i++){
+    const ax=axes[i];
+    $('d'+i).style.background=ACLR[ax]||'#8b949e';
+    $('l'+i).textContent=`${['1st','2nd','3rd'][i]} · ${isT?(GREEKFULL[ax]||ax+' axis'):((['α₁','β','α₃'][i])+' · '+ax+'-axis')}`;
+    $('r'+i).className=ARNG[ax]||'rx';
+  }
+}
+function refreshEulerInfo(){
+  const axes=eOrd.split(''),isB=eConv==='body',isT=new Set(axes).size===3;
+  const lbl=isT?axes.map(ax=>GREEK[ax]||ax):['α₁','β','α₃'];
+  const fml=isB?`R = R<sub>${axes[0]}</sub>(${lbl[0]})·R<sub>${axes[1]}</sub>(${lbl[1]})·R<sub>${axes[2]}</sub>(${lbl[2]})`:`R = R<sub>${axes[2]}</sub>(${lbl[2]})·R<sub>${axes[1]}</sub>(${lbl[1]})·R<sub>${axes[0]}</sub>(${lbl[0]})`;
+  const desc=isB?`<strong>Body (Intrinsic):</strong> each rotation is about an axis <em>of the already-rotated body frame</em>.`:`<strong>Space (Extrinsic):</strong> all rotations are about axes <em>fixed in the world frame</em>.`;
+  $('inf').innerHTML=`${desc}<br><div class="fml">${fml}</div>`;
+}
+function setConv(c){eConv=c;$('etog').querySelectorAll('.tb2').forEach((b,i)=>b.classList.toggle('on',(i===0)===(c==='body')));refreshEulerUI();refreshEulerInfo();onEulerChange();}
+function setOrder(o){eOrd=o;$('osel').value=o;refreshEulerUI();refreshEulerInfo();onEulerChange();}
+function slide(i,v){eAng[i]=v;$('v'+i).textContent=v.toFixed(1)+'°';onEulerChange();}
+function setInter(v){eInter=v;iG1.visible=v;iG2.visible=v;onEulerChange();}
+function go(a,b,c){eAng=[a,b,c];for(let i=0;i<3;i++){$('r'+i).value=eAng[i];$('v'+i).textContent=eAng[i].toFixed(1)+'°';}onEulerChange();}
+
+// ── Matrix Tab ─────────────────────────────────────────────────────────────────
+function readMat(){const R=[[0,0,0],[0,0,0],[0,0,0]];let ok=true;migEl.querySelectorAll('.mci').forEach(inp=>{const r=+inp.dataset.r,c=+inp.dataset.c,v=parseFloat(inp.value);if(isNaN(v)){ok=false;inp.classList.add('bad');}else{inp.classList.remove('bad');R[r][c]=v;}});return ok?R:null;}
+function writeMat(R){migEl.querySelectorAll('.mci').forEach(inp=>{inp.value=+parseFloat(R[+inp.dataset.r][+inp.dataset.c].toFixed(6));inp.classList.remove('bad');});}
+function onMI(){const R=readMat();if(!R)return;validateMat(R);stateQ.setFromRotationMatrix(ArrToM4(R));applyState();refreshDecomp();}
+function validateMat(R){
+  const d=det3(R),orth=frobDiff(mmul(tr(R),R),I3);
+  $('vdet').textContent=d.toFixed(5);$('vorth').textContent=orth.toFixed(5);
+  const ok=Math.abs(d-1)<0.05&&orth<0.05,apr=Math.abs(d-1)<0.2&&orth<0.25;
+  const badge=$('vbadge');
+  if(ok){badge.textContent='✓ Valid SO(3)';badge.className='vbadge vok';$('vstat').textContent='Proper rotation matrix';}
+  else if(apr){badge.textContent='⚠ Approximate';badge.className='vbadge vwarn';$('vstat').textContent='Try Orthogonalize';}
+  else{badge.textContent='✗ Not SO(3)';badge.className='vbadge verr';$('vstat').textContent=`det=${d.toFixed(3)}`;}
+}
+function seedMatFromState(){const M=new THREE.Matrix4().makeRotationFromQuaternion(stateQ);writeMat(M4toArr(M));const R=readMat();if(R){validateMat(R);refreshDecomp();}}
+function doOrtho(){const R=readMat();if(!R)return;writeMat(gramSchmidt(R));onMI();}
+function doTranspose(){const R=readMat();if(!R)return;writeMat(tr(R));onMI();}
+function doAxisAngle(){
+  const R=readMat();if(!R)return;
+  const trace=R[0][0]+R[1][1]+R[2][2];
+  const theta=Math.acos(Math.max(-1,Math.min(1,(trace-1)/2)))*180/Math.PI;
+  const s=Math.sin(theta*Math.PI/180);
+  let nx,ny,nz;
+  if(Math.abs(s)<1e-6){nx=1;ny=0;nz=0;}else{nx=(R[2][1]-R[1][2])/(2*s);ny=(R[0][2]-R[2][0])/(2*s);nz=(R[1][0]-R[0][1])/(2*s);}
+  $('aaTheta').textContent=theta.toFixed(3)+'°';
+  $('aaAxis').textContent=`(${nx.toFixed(3)}, ${ny.toFixed(3)}, ${nz.toFixed(3)})`;
+  $('aabox').classList.add('show');
+}
+function setDConv(c){dConv=c;$('dtog').querySelectorAll('.tb2').forEach((b,i)=>b.classList.toggle('on',(i===0)===(c==='body')));refreshDecomp();}
+function refreshDecomp(){
+  const R=readMat();if(!R)return;
+  const axes=$('dOrd').value.split(''),tait=new Set(axes).size===3;
+  let ex;
+  if(tait){const M=ArrToM4(R),tOrd=dConv==='body'?axes.join(''):[...axes].reverse().join('');const e=new THREE.Euler();e.setFromRotationMatrix(M,tOrd);const em={X:e.x*180/Math.PI,Y:e.y*180/Math.PI,Z:e.z*180/Math.PI};ex=axes.map(ax=>em[ax]);}
+  else{ex=classicDecomp(dConv==='space'?tr(R):R,axes.join(''));}
+  decompAngles=ex;
+  for(let i=0;i<3;i++){$('da'+i).textContent=isNaN(ex[i])?'—':ex[i].toFixed(3)+'°';$('dax'+i).textContent=({X:'φ Roll',Y:'θ Pitch',Z:'ψ Yaw'}[axes[i]]||axes[i]+'-axis');}
+}
+function sendToEuler(){if(decompAngles.some(isNaN))return;setOrder($('dOrd').value);setConv(dConv);go(...decompAngles);setTab('euler');}
+function mPreset(key){
+  const c=Math.cos,s=Math.sin,p={
+    I:[[1,0,0],[0,1,0],[0,0,1]],
+    Rx90:[[1,0,0],[0,0,-1],[0,1,0]],Ry90:[[0,0,1],[0,1,0],[-1,0,0]],Rz90:[[0,-1,0],[1,0,0],[0,0,1]],
+    Rx45:[[1,0,0],[0,c(.785),-s(.785)],[0,s(.785),c(.785)]]
+  };
+  if(key==='fromEuler')writeMat(M4toArr(calcEulerM4()));
+  else if(key==='rand'){const q=new THREE.Quaternion(Math.random()-.5,Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize();writeMat(M4toArr(new THREE.Matrix4().makeRotationFromQuaternion(q)));}
+  else writeMat(p[key]);
+  onMI();
+}
+
+// ── Quaternion Tab ─────────────────────────────────────────────────────────────
+function updateQuatFormula(){
+  const{theta,nx,ny,nz}=quatToAxisAngle(stateQ);
+  const halfT=theta/2,cosH=Math.cos(halfT*Math.PI/180),sinH=Math.sin(halfT*Math.PI/180);
+  const f=n=>n.toFixed(5);
+  $('qfBreak').innerHTML=`
+    <div class="qf-row"><span class="qfl">θ</span><span class="qfv">${theta.toFixed(3)}°</span><span class="qfa" style="color:#cc88ff">θ/2 = ${halfT.toFixed(3)}°</span></div>
+    <div class="qf-row"><span class="qfl">n̂</span><span class="qfv">(${nx.toFixed(3)}, ${ny.toFixed(3)}, ${nz.toFixed(3)})</span><span class="qfa" style="color:#6e7681">unit axis</span></div>
+    <div style="height:1px;background:#21262d;margin:5px 0"></div>
+    <div class="qf-row"><span class="qfl" style="color:#cc88ff">w</span><span class="qfv">cos(${halfT.toFixed(1)}°)</span><span class="qfa" style="color:#cc88ff">${f(cosH)}</span></div>
+    <div class="qf-row"><span class="qfl" style="color:#ff5555">x</span><span class="qfv">${sinH.toFixed(5)}×${nx.toFixed(3)}</span><span class="qfa" style="color:#ff5555">${f(sinH*nx)}</span></div>
+    <div class="qf-row"><span class="qfl" style="color:#33dd55">y</span><span class="qfv">${sinH.toFixed(5)}×${ny.toFixed(3)}</span><span class="qfa" style="color:#33dd55">${f(sinH*ny)}</span></div>
+    <div class="qf-row"><span class="qfl" style="color:#4499ff">z</span><span class="qfv">${sinH.toFixed(5)}×${nz.toFixed(3)}</span><span class="qfa" style="color:#4499ff">${f(sinH*nz)}</span></div>`;
+}
+function writeQToInputs(q){
+  const v={qw:q.w,qx:q.x,qy:q.y,qz:q.z};
+  Object.entries(v).forEach(([id,val])=>{$(id).value=val.toFixed(5);$(id+'s').value=Math.max(-1,Math.min(1,val));});
+  const n=q.length();const ok=Math.abs(n-1)<0.005;
+  $('qnormVal').textContent=`= ${n.toFixed(5)} ${ok?'✓':'⚠ — Normalize!'}`;
+  $('qnormBar').className='qnorm-bar '+(ok?'qnorm-ok':'qnorm-bad');
+  updateQuatFormula();
+}
+function onQSlide(comp,v){$(('q'+comp)).value=v.toFixed(5);applyRawQ();}
+function onQNum(comp,val){const v=parseFloat(val);if(isNaN(v))return;$('q'+comp+'s').value=Math.max(-1,Math.min(1,v));applyRawQ();}
+function applyRawQ(){
+  const w=parseFloat($('qw').value)||0,x=parseFloat($('qx').value)||0,y=parseFloat($('qy').value)||0,z=parseFloat($('qz').value)||0;
+  stateQ.set(x,y,z,w);applyState();writeQToInputs(stateQ);}
+function seedQuatFromState(){writeQToInputs(stateQ);}
+function doNormalizeQ(){stateQ.normalize();writeQToInputs(stateQ);applyState();}
+function doNegateQ(){stateQ.set(-stateQ.x,-stateQ.y,-stateQ.z,-stateQ.w);writeQToInputs(stateQ);}
+function onAAChange(){
+  const theta=parseFloat($('aaAngle').value)||0;
+  $('aaAngDisp').textContent=theta.toFixed(1)+'°';
+  let nx=parseFloat($('aaNx').value)||0,ny=parseFloat($('aaNy').value)||0,nz=parseFloat($('aaNz').value)||0;
+  const len=Math.sqrt(nx*nx+ny*ny+nz*nz);
+  if(len<1e-10){nx=1;ny=nz=0;}else{nx/=len;ny/=len;nz/=len;}
+  const s=Math.sin(theta*Math.PI/360),c=Math.cos(theta*Math.PI/360);
+  stateQ.set(nx*s,ny*s,nz*s,c);applyState();writeQToInputs(stateQ);
+}
+function setAAAxis(x,y,z){$('aaNx').value=x;$('aaNy').value=y;$('aaNz').value=z;onAAChange();}
+
+// ── SLERP (shared) ─────────────────────────────────────────────────────────────
+function captureA(){slerpA.copy(stateQ);slerpASet=true;const s=`w=${stateQ.w.toFixed(2)}`;['eCapA','mCapA','qCapA'].forEach(id=>{if($(id)){$(id).classList.add('set');}});['eCapALbl','mCapALbl','qCapALbl'].forEach(id=>{if($(id))$(id).textContent=s;});}
+function captureB(){slerpB.copy(stateQ);slerpBSet=true;const s=`w=${stateQ.w.toFixed(2)}`;['eCapB','mCapB','qCapB'].forEach(id=>{if($(id))$(id).classList.add('set');});['eCapBLbl','mCapBLbl','qCapBLbl'].forEach(id=>{if($(id))$(id).textContent=s;});}
+function onSlerpT(t){slerpT=t;syncSlerpUI();if(slerpASet&&slerpBSet){stateQ.copy(slerpA).slerp(slerpB,t);applyState();if(activeTab==='quat')writeQToInputs(stateQ);}}
+function syncSlerpUI(){document.querySelectorAll('.slerp-range').forEach(el=>el.value=slerpT);document.querySelectorAll('.slerp-disp').forEach(el=>el.textContent=Math.round(slerpT*100)+'%');}
+function playSlerpAnim(){if(!slerpASet||!slerpBSet)return;slerpPlaying=!slerpPlaying;$('slerpBtn').textContent=slerpPlaying?'⏸':'▶';}
+
+// ── Compare Tab ────────────────────────────────────────────────────────────────
+function onGL(comp,v){
+  if(comp==='psi')gPsi=v;else if(comp==='theta')gTheta=v;else gPhi=v;
+  $('gvPsi').textContent=gPsi.toFixed(1)+'°';$('gvTheta').textContent=gTheta.toFixed(1)+'°';$('gvPhi').textContent=gPhi.toFixed(1)+'°';
+  const r=[gPsi,gTheta,gPhi].map(d=>d*Math.PI/180);
+  const Rz=makeR3x3([0,0,1],r[0]),Ry=makeR3x3([0,1,0],r[1]),Rx=makeR3x3([1,0,0],r[2]);
+  const R=mmul(Rz,mmul(Ry,Rx));
+  stateQ.setFromRotationMatrix(ArrToM4(R));applyState();
+  gimbalArrs[0].setDirection(new THREE.Vector3(0,0,1));
+  gimbalArrs[1].setDirection(new THREE.Vector3(Rz[0][1],Rz[1][1],Rz[2][1]).normalize());
+  gimbalArrs[2].setDirection(new THREE.Vector3(R[0][0],R[1][0],R[2][0]).normalize());
+  const dot=R[2][0],nearGL=Math.abs(Math.abs(dot)-1)<0.1;
+  $('glStatus').textContent=nearGL?'⚠ GIMBAL LOCK: ψ-axis and φ-axis are now parallel — 1 DOF lost!':'Axes are independent (3 DOF active)';
+  $('glStatus').className='gl-status '+(nearGL?'gls-bad':'gls-ok');
+}
+function runDrift(){
+  const N=parseInt($('driftN').value);
+  let seed=Date.now()&0xfffffff;
+  function rng(){seed=(seed*1664525+1013904223)&0xffffffff;return(seed>>>0)/0xffffffff;}
+  let q={w:1,x:0,y:0,z:0};let M=[[1,0,0],[0,1,0],[0,0,1]];
+  for(let i=0;i<N;i++){
+    let ax=[rng()-.5,rng()-.5,rng()-.5];const len=Math.sqrt(ax[0]**2+ax[1]**2+ax[2]**2);ax=ax.map(v=>v/len);
+    const angle=(rng()-.5)*0.002,s=Math.sin(angle/2),c=Math.cos(angle/2);
+    const dq={w:c,x:ax[0]*s,y:ax[1]*s,z:ax[2]*s};
+    q={w:q.w*dq.w-q.x*dq.x-q.y*dq.y-q.z*dq.z,x:q.w*dq.x+q.x*dq.w+q.y*dq.z-q.z*dq.y,y:q.w*dq.y-q.x*dq.z+q.y*dq.w+q.z*dq.x,z:q.w*dq.z+q.x*dq.y-q.y*dq.x+q.z*dq.w};
+    M=mmul(M,makeR3x3(ax,angle));
+  }
+  const qErr=Math.abs(1-Math.sqrt(q.w**2+q.x**2+q.y**2+q.z**2));
+  const matErr=frobDiff(mmul(tr(M),M),I3);
+  driftRuns.push({N,matErr,qErr});
+  const f=v=>v.toExponential(2);
+  const col=v=>v<1e-11?'#3fb950':v<1e-10?'#d29922':'#f85149';
+  $('driftBody').innerHTML=driftRuns.map((r,i)=>`<tr><td>${i+1}</td><td>${r.N.toLocaleString()}</td><td style="color:${col(r.matErr)}">${f(r.matErr)}</td><td style="color:${col(r.qErr)}">${f(r.qErr)}</td><td style="color:#3fb950">${(r.matErr/r.qErr).toFixed(1)}×</td></tr>`).join('');
+  $('driftTable').style.display='table';
+}
+function clearDrift(){driftRuns=[];$('driftTable').style.display='none';$('driftBody').innerHTML='';}
+
+// ── Tab Switching ─────────────────────────────────────────────────────────────
+function setTab(t){
+  activeTab=t;
+  ['euler','matrix','quat','compare'].forEach((n,i)=>{document.querySelectorAll('.tab')[i].classList.toggle('on',n===t);['ep','mp','qp','cp'][i] && $(['ep','mp','qp','cp'][i]) && ($(['ep','mp','qp','cp'][i]).style.display=n===t?'flex':'none');});
+  if(t==='euler')seedEulerFromState();
+  else if(t==='matrix'){if(!mInit)mInit=true;seedMatFromState();}
+  else if(t==='quat'){seedQuatFromState();updateQuatFormula();}
+  gimbalArrs.forEach(a=>a.visible=t==='compare');
+  axisArr.visible=t==='quat'&&stateQ.angleTo(new THREE.Quaternion())>0.01;
+  iG1.visible=eInter&&t==='euler';iG2.visible=eInter&&t==='euler';
+  applyState();
+}
+
+// ── Labels & Resize ────────────────────────────────────────────────────────────
+const _v=new THREE.Vector3();
+function toSc(x,y,z){_v.set(x,y,z).project(cam);return{x:(_v.x+1)/2*vpd.clientWidth,y:(1-_v.y)/2*vpd.clientHeight,b:_v.z>1};}
+function updLabels(){
+  [['wx',[3.1,0,0]],['wy',[0,3.1,0]],['wz',[0,0,3.1]]].forEach(([id,p])=>{const s=toSc(...p);lbls[id].style.left=s.x+'px';lbls[id].style.top=s.y+'px';lbls[id].style.display=s.b?'none':'';});
+  const q=bGrp.quaternion;
+  [['bx',[2.4,0,0]],['by',[0,2.4,0]],['bz',[0,0,2.4]]].forEach(([id,p])=>{const v=new THREE.Vector3(...p).applyQuaternion(q);const s=toSc(v.x,v.y,v.z);lbls[id].style.left=s.x+'px';lbls[id].style.top=s.y+'px';lbls[id].style.display=s.b?'none':'';});
+}
+function resize(){const w=vpd.clientWidth,h=vpd.clientHeight;renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(vpd);resize();
+
+// ── Render Loop ────────────────────────────────────────────────────────────────
+(function loop(){
+  requestAnimationFrame(loop);
+  const now=performance.now(),dt=Math.min((now-prevTime)/1000,.05);prevTime=now;
+  if(slerpPlaying&&slerpASet&&slerpBSet){
+    slerpT=slerpT>=1?0:slerpT+dt*.4;syncSlerpUI();
+    stateQ.copy(slerpA).slerp(slerpB,slerpT);
+    bGrp.setRotationFromQuaternion(stateQ);
+    if(activeTab==='quat')writeQToInputs(stateQ);
+    refreshHUD();updateReadonlyMat();
+  }
+  updLabels();renderer.render(scene,cam);
+})();
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+refreshEulerUI();refreshEulerInfo();onEulerChange();
+</script>
+</body>
+</html>
