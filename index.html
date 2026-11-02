@@ -156,7 +156,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.3)}
 <body>
 <div id="vp">
   <canvas id="c"></canvas>
-  <div id="hud"><b id="hudM">Euler · Body · ZYX</b><br><span id="hudQ" class="hq">q = (1.000, 0.000, 0.000, 0.000)</span></div>
+  <div id="hud"><b id="hudM">Euler · Body · ZYX</b><br><span>ROS · X forward · Y left · Z up</span><br><span id="hudQ" class="hq">q = (1.000, 0.000, 0.000, 0.000)</span></div>
   <div id="hint">Drag to orbit &nbsp;·&nbsp; Scroll to zoom</div>
   <div id="mpick">
     <select onchange="switchModel(this.value)" title="Change 3D model">
@@ -181,7 +181,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.3)}
 
   <!-- ══ EULER ══ -->
   <div id="ep" class="tc">
-    <div class="tab-intro"><strong>Euler Angles</strong> describe orientation as three sequential rotations about coordinate axes: <strong>φ</strong> (Roll/X), <strong>θ</strong> (Pitch/Y), <strong>ψ</strong> (Yaw/Z). Simple and intuitive — but prone to gimbal lock when the middle angle reaches ±90°.</div>
+    <div class="tab-intro"><strong>ROS body frame:</strong> X forward, Y left, Z up; right-handed. <strong>Roll</strong> rotates about X, <strong>pitch</strong> about Y, <strong>yaw</strong> about Z. From zero: positive yaw turns left, positive pitch tilts the nose down, positive roll lowers the right side.<br>Angles are displayed in degrees (°); ROS normally uses radians (rad).</div>
     <div><div class="slbl">Convention</div>
       <div class="tog" id="etog">
         <button class="tb2 on" onclick="setConv('body')">Body (Intrinsic)</button>
@@ -189,7 +189,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.3)}
       </div></div>
     <div><div class="slbl">Rotation Order</div>
       <div class="sw"><select id="osel" onchange="setOrder(this.value)">
-        <option value="ZYX">3-2-1 · Z→Y→X · Aerospace</option>
+        <option value="ZYX">3-2-1 · Z→Y→X</option>
         <option value="XYZ">1-2-3 · X→Y→Z</option>
         <option value="YXZ">2-1-3 · Y→X→Z</option>
         <option value="XZY">1-3-2 · X→Z→Y</option>
@@ -222,14 +222,14 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.3)}
     <div><div class="slbl">Legend</div>
       <div class="leg">
         <div class="lr"><div class="li"><div class="ll" style="background:#ff4444;opacity:.35"></div>World X</div><div class="li"><div class="ll" style="background:#33dd55;opacity:.35"></div>World Y</div><div class="li"><div class="ll" style="background:#4499ff;opacity:.35"></div>World Z</div></div>
-        <div class="lr"><div class="li"><div class="ll" style="background:#ff5555"></div>Body x</div><div class="li"><div class="ll" style="background:#33dd55"></div>Body y</div><div class="li"><div class="ll" style="background:#4499ff"></div>Body z</div></div>
+        <div class="lr"><div class="li"><div class="ll" style="background:#ff5555"></div>Body x · forward</div><div class="li"><div class="ll" style="background:#33dd55"></div>Body y · left</div><div class="li"><div class="ll" style="background:#4499ff"></div>Body z · up</div></div>
       </div></div>
     <div><div class="slbl">Presets</div>
       <div class="pg">
-        <button class="pb" onclick="go(45,0,0)">45° 1st axis</button>
-        <button class="pb" onclick="go(0,45,0)">45° 2nd axis</button>
-        <button class="pb" onclick="go(0,0,45)">45° 3rd axis</button>
-        <button class="pb" onclick="go(30,45,60)">φ30 θ45 ψ60</button>
+        <button class="pb" onclick="setRPY(30,0,0)">Roll +30°</button>
+        <button class="pb" onclick="setRPY(0,30,0)">Pitch +30°</button>
+        <button class="pb" onclick="setRPY(0,0,30)">Yaw +30°</button>
+        <button class="pb" onclick="setRPY(30,45,60)">φ30 θ45 ψ60</button>
         <button class="pb" onclick="go(45,89,20)">Near Gimbal Lock</button>
         <button class="pb" onclick="go(0,0,0)">Reset</button>
       </div></div>
@@ -436,10 +436,12 @@ const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0d1117);
 const cam=new THREE.PerspectiveCamera(52,1,.05,100);
+cam.up.set(0,0,1);
 scene.add(new THREE.AmbientLight(0xffffff,.55));
 const sun=new THREE.DirectionalLight(0xffffff,.95); sun.position.set(5,10,8); scene.add(sun);
-const fl=new THREE.DirectionalLight(0x6699ff,.35); fl.position.set(-6,2,-6); scene.add(fl);
-const grid=new THREE.GridHelper(12,24,0x161c25,0x161c25); grid.position.y=-1.9; scene.add(grid);
+const fl=new THREE.DirectionalLight(0x6699ff,.35); fl.position.set(-6,-6,2); scene.add(fl);
+const grid=new THREE.GridHelper(12,24,0x161c25,0x161c25);
+grid.rotation.x=Math.PI/2; grid.position.z=-1.9; scene.add(grid);
 
 function mkArr(ax,col,op,len=2.5){
   const d={X:[1,0,0],Y:[0,1,0],Z:[0,0,1]}[ax];
@@ -538,7 +540,13 @@ function buildRocket(){
 const builders={aircraft:buildAircraft,drone:buildDrone,cube:buildCube,satellite:buildSatellite,camera:buildCamera,rocket:buildRocket};
 function switchModel(name){
   Object.values(models).forEach(m=>m.visible=false);
-  if(!models[name]){models[name]=builders[name]();modelGrp.add(models[name]);}
+  if(!models[name]){
+    models[name]=builders[name]();
+    // Authored assets use X forward, Y up, Z right. Rotate them into the
+    // ROS body frame: X forward, Y left, Z up. The cube already has RGB XYZ faces.
+    if(name!=='cube')models[name].rotation.x=Math.PI/2;
+    modelGrp.add(models[name]);
+  }
   models[name].visible=true;
 }
 switchModel('aircraft');
@@ -586,8 +594,8 @@ for(let r=0;r<3;r++)for(let c=0;c<3;c++){
 }
 
 // Camera orbit
-let cθ=.85,cφ=.52,cR=7,drg=false,lpt={x:0,y:0};
-function updCam(){cam.position.set(cR*Math.cos(cφ)*Math.sin(cθ),cR*Math.sin(cφ),cR*Math.cos(cφ)*Math.cos(cθ));cam.lookAt(0,0,0);}
+let cθ=-.85,cφ=.52,cR=7,drg=false,lpt={x:0,y:0};
+function updCam(){cam.position.set(cR*Math.cos(cφ)*Math.cos(cθ),cR*Math.cos(cφ)*Math.sin(cθ),cR*Math.sin(cφ));cam.lookAt(0,0,0);}
 updCam();
 cv.addEventListener('pointerdown',e=>{drg=true;lpt={x:e.clientX,y:e.clientY};cv.setPointerCapture(e.pointerId)});
 cv.addEventListener('pointermove',e=>{if(!drg)return;cθ-=(e.clientX-lpt.x)*.009;cφ=Math.max(.05,Math.min(1.4,cφ+(e.clientY-lpt.y)*.007));lpt={x:e.clientX,y:e.clientY};updCam()});
@@ -686,13 +694,16 @@ function refreshEulerInfo(){
   const lbl=axes.map(ax=>GREEK[ax]);
   const fml=isB?`R = R<sub>${axes[0]}</sub>(${lbl[0]})·R<sub>${axes[1]}</sub>(${lbl[1]})·R<sub>${axes[2]}</sub>(${lbl[2]})`:`R = R<sub>${axes[2]}</sub>(${lbl[2]})·R<sub>${axes[1]}</sub>(${lbl[1]})·R<sub>${axes[0]}</sub>(${lbl[0]})`;
   const desc=isB?`<strong>Body (Intrinsic):</strong> each rotation is about an axis <em>of the already-rotated body frame</em>.`:`<strong>Space (Extrinsic):</strong> all rotations are about axes <em>fixed in the world frame</em>.`;
-  $('inf').innerHTML=`${desc}<br><div class="fml">${fml}</div>`;
+  const rosRPY=(isB&&eOrd==='ZYX')||(!isB&&eOrd==='XYZ');
+  const note=rosRPY?'<br>ROS RPY: fixed-axis X→Y→Z is equivalent to body-axis Z→Y→X.':'';
+  $('inf').innerHTML=`${desc}<br><div class="fml">${fml}</div>${note}`;
 }
 function setConv(c){eConv=c;$('etog').querySelectorAll('.tb2').forEach((b,i)=>b.classList.toggle('on',(i===0)===(c==='body')));refreshEulerUI();refreshEulerInfo();onEulerChange();}
 function setOrder(o){eOrd=o;$('osel').value=o;refreshEulerUI();refreshEulerInfo();onEulerChange();}
 function slide(i,v){eAng[i]=v;$('v'+i).textContent=v.toFixed(1)+'°';onEulerChange();}
 function setInter(v){eInter=v;iG1.visible=v;iG2.visible=v;onEulerChange();}
 function go(a,b,c){eAng=[a,b,c];for(let i=0;i<3;i++){$('r'+i).value=eAng[i];$('v'+i).textContent=eAng[i].toFixed(1)+'°';}onEulerChange();}
+function setRPY(roll,pitch,yaw){const angles={X:roll,Y:pitch,Z:yaw};go(...eOrd.split('').map(ax=>angles[ax]));}
 
 // ── Matrix Tab ─────────────────────────────────────────────────────────────────
 function readMat(){const R=[[0,0,0],[0,0,0],[0,0,0]];let ok=true;migEl.querySelectorAll('.mci').forEach(inp=>{const r=+inp.dataset.r,c=+inp.dataset.c,v=parseFloat(inp.value);if(isNaN(v)){ok=false;inp.classList.add('bad');}else{inp.classList.remove('bad');R[r][c]=v;}});return ok?R:null;}
