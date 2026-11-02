@@ -7,8 +7,9 @@ used in robotics, aerospace, and computer graphics.
 
 ## Features
 
-- **Euler Angles** — body/space conventions, all rotation orders (ZYX, XYZ, 
-  ZXZ, ...), φ/θ/ψ labeling, gimbal lock detection, intermediate frames
+- **Euler Angles** — body/space conventions, six Tait–Bryan rotation orders
+  (ZYX, XYZ, YXZ, XZY, ZXY, YZX), φ/θ/ψ labeling, gimbal lock detection,
+  intermediate frames
 - **Rotation Matrix** — editable 3×3 SO(3) input, orthogonality validation, 
   Gram-Schmidt orthogonalization, axis-angle extraction
 - **Quaternion** — axis-angle and raw component input, live formula breakdown 
